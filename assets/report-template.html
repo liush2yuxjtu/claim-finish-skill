@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交付验收报告 — {{PROJECT_NAME}}</title>
+<style>
+:root {
+  --pass:#22c55e; --warn:#f59e0b; --fail:#ef4444;
+  --bg:#0f172a; --surface:#1e293b; --border:#334155;
+  --text:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'SF Pro Display',-apple-system,sans-serif;padding:32px;min-height:100vh}
+/* Header */
+.header{text-align:center;margin-bottom:40px}
+.header h1{font-size:2rem;font-weight:700;color:var(--accent);letter-spacing:-.02em}
+.header .meta{color:var(--muted);margin-top:8px;font-size:.9rem}
+/* Checkpoint cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:40px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;align-items:flex-start;gap:14px;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.card.pass{border-left:4px solid var(--pass)}
+.card.warn{border-left:4px solid var(--warn)}
+.card.fail{border-left:4px solid var(--fail)}
+.card .icon{font-size:1.8rem;flex-shrink:0;line-height:1}
+.card .body .title{font-weight:600;font-size:.95rem}
+.card .body .status{font-size:.78rem;margin-top:4px;font-weight:600}
+.card.pass .status{color:var(--pass)}
+.card.warn .status{color:var(--warn)}
+.card.fail .status{color:var(--fail)}
+.card .body .notes{font-size:.78rem;color:var(--muted);margin-top:6px;line-height:1.5}
+/* Sections */
+.section{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:20px;overflow:hidden}
+.section-hd{padding:16px 20px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+.section-hd:hover{background:rgba(255,255,255,.03)}
+.section-hd h2{font-size:1rem;font-weight:600}
+.chevron{font-size:.75rem;transition:transform .2s}
+.chevron.open{transform:rotate(180deg)}
+.section-bd{display:none;padding:0 20px 20px;border-top:1px solid var(--border)}
+.section-bd.open{display:block}
+/* Stats */
+.stats{display:flex;gap:14px;flex-wrap:wrap;margin-top:16px}
+.stat{background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.25);border-radius:10px;padding:12px 18px;text-align:center;min-width:90px}
+.stat .val{font-size:1.8rem;font-weight:700;color:var(--accent);line-height:1}
+.stat .lbl{font-size:.7rem;color:var(--muted);margin-top:4px}
+/* Coverage bars */
+.cov-row{display:flex;align-items:center;gap:12px;margin:10px 0;font-size:.85rem}
+.cov-lbl{width:72px;color:var(--muted)}
+.cov-bar-wrap{flex:1;height:10px;background:var(--border);border-radius:5px;overflow:hidden}
+.cov-fill{height:100%;border-radius:5px;transition:width .8s ease}
+.cov-pct{width:40px;text-align:right;font-weight:600}
+/* File tree */
+.file-tree{font-family:'SF Mono','Fira Code',monospace;font-size:.78rem;line-height:1.9;background:#0a0f1e;border-radius:8px;padding:16px;margin-top:12px;white-space:pre;overflow-x:auto}
+/* Sign-off */
+.signoff{background:linear-gradient(135deg,#1e293b,#0f172a);border:2px solid var(--accent);border-radius:16px;padding:32px;margin-top:32px}
+.signoff h2{font-size:1.2rem;font-weight:700;color:var(--accent);margin-bottom:20px}
+.checklist{list-style:none}
+.checklist li{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.checklist li:last-child{border-bottom:none}
+.checklist input[type=checkbox]{width:17px;height:17px;margin-top:2px;cursor:pointer;accent-color:var(--accent);flex-shrink:0}
+.checklist label{cursor:pointer;font-size:.88rem;line-height:1.5}
+textarea.notes{width:100%;background:#0a0f1e;border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:.85rem;margin-top:18px;resize:vertical;min-height:72px;font-family:inherit}
+textarea.notes:focus{outline:none;border-color:var(--accent)}
+.export-btn{background:var(--accent);color:#0f172a;border:none;border-radius:10px;padding:13px 28px;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:18px;width:100%;transition:opacity .15s,transform .1s}
+.export-btn:hover{opacity:.9;transform:scale(1.01)}
+/* Verdict banner */
+.verdict{text-align:center;padding:20px;border-radius:12px;margin-top:20px;font-size:1.3rem;font-weight:700;display:none}
+.verdict.lgtm{background:rgba(34,197,94,.12);color:var(--pass);border:2px solid var(--pass)}
+.verdict.conditional{background:rgba(245,158,11,.12);color:var(--warn);border:2px solid var(--warn)}
+.verdict.blocked{background:rgba(239,68,68,.12);color:var(--fail);border:2px solid var(--fail)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>交付验收报告</h1>
+  <div class="meta">项目：{{PROJECT_NAME}} &nbsp;·&nbsp; 生成时间：{{REPORT_DATE}}</div>
+</div>
+
+<!-- Checkpoint 状态卡片 -->
+<div class="grid" id="cpGrid"></div>
+
+<!-- 测试覆盖率 -->
+<div class="section">
+  <div class="section-hd" onclick="toggle(this)">
+    <h2>🧪 测试覆盖率</h2><span class="chevron">▼</span>
+  </div>
+  <div class="section-bd">
+    <div class="stats">
+      <div class="stat"><div class="val">{{TEST_TOTAL}}</div><div class="lbl">总测试数</div></div>
+      <div class="stat"><div class="val" style="color:var(--pass)">{{TEST_PASS}}</div><div class="lbl">通过</div></div>
+      <div class="stat"><div class="val" style="color:var(--fail)">{{TEST_FAIL}}</div><div class="lbl">失败</div></div>
+      <div class="stat"><div class="val">{{COV_LINE}}%</div><div class="lbl">行覆盖率</div></div>
+    </div>
+    <div style="margin-top:16px" id="covBars"></div>
+  </div>
+</div>
+
+<!-- release/final/ 文件树 -->
+<div class="section">
+  <div class="section-hd" onclick="toggle(this)">
+    <h2>📦 release/final/ 文件清单</h2><span class="chevron">▼</span>
+  </div>
+  <div class="section-bd">
+    <div style="display:flex;gap:24px;margin-top:12px;font-size:.85rem;color:var(--muted)">
+      <span>共 <strong style="color:var(--text)">{{MANIFEST_COUNT}}</strong> 个文件</span>
+      <span>总大小 <strong style="color:var(--text)">{{PACKAGE_SIZE}}</strong></span>
+    </div>
+    <div class="file-tree">{{FILE_TREE}}</div>
+  </div>
+</div>
+
+<!-- 签字确认区 -->
+<div class="signoff">
+  <h2>最终签字确认</h2>
+  <ul class="checklist">
+    <li><input type="checkbox" id="c1"><label for="c1">proposal.md 已确认，需求无歧义</label></li>
+    <li><input type="checkbox" id="c2"><label for="c2">validation.md 已确认，所有验收标准均有测试覆盖</label></li>
+    <li><input type="checkbox" id="c3"><label for="c3">三方文档（VC / 用户 / 开发者）均已审阅，无未完成占位符</label></li>
+    <li><input type="checkbox" id="c4"><label for="c4">白盒测试全部通过，覆盖率符合要求</label></li>
+    <li><input type="checkbox" id="c5"><label for="c5">用户操作手册已审阅，步骤可独立执行</label></li>
+    <li><input type="checkbox" id="c6"><label for="c6">release/final/ 包体已验证，无禁止文件</label></li>
+    <li><input type="checkbox" id="c7"><label for="c7">本人确认以上交付物满足对外发布标准</label></li>
+  </ul>
+  <textarea class="notes" placeholder="补充说明（可选）：记录警告项处理决策或豁免原因…"></textarea>
+  <button class="export-btn" onclick="exportRecord()">导出签字确认记录</button>
+  <div class="verdict" id="verdict"></div>
+</div>
+
+<script>
+// ── 数据注入点（Claude 替换此处） ──────────────────────────
+const CHECKPOINTS = {{CHECKPOINT_DATA}};
+const COV = { line: {{COV_LINE}}, branch: {{COV_BRANCH}}, func: {{COV_FUNC}} };
+// ──────────────────────────────────────────────────────────
+
+const STATUS_MAP = {
+  pass: { cls:'pass', label:'✅ 通过' },
+  warn: { cls:'warn', label:'⚠️ 警告' },
+  fail: { cls:'fail', label:'❌ 阻塞' },
+};
+
+// 渲染 checkpoint 卡片
+const grid = document.getElementById('cpGrid');
+CHECKPOINTS.forEach(cp => {
+  const s = STATUS_MAP[cp.status] || STATUS_MAP.warn;
+  grid.innerHTML += `
+    <div class="card ${s.cls}">
+      <div class="icon">${cp.icon}</div>
+      <div class="body">
+        <div class="title">${cp.title}</div>
+        <div class="status">${s.label}</div>
+        <div class="notes">${cp.notes}</div>
+      </div>
+    </div>`;
+});
+
+// 渲染覆盖率条
+const bars = document.getElementById('covBars');
+[['行覆盖', COV.line], ['分支覆盖', COV.branch], ['函数覆盖', COV.func]].forEach(([lbl, pct]) => {
+  const color = pct >= 80 ? 'var(--pass)' : pct >= 60 ? 'var(--warn)' : 'var(--fail)';
+  bars.innerHTML += `
+    <div class="cov-row">
+      <span class="cov-lbl">${lbl}</span>
+      <div class="cov-bar-wrap"><div class="cov-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span class="cov-pct" style="color:${color}">${pct}%</span>
+    </div>`;
+});
+
+// 折叠/展开
+function toggle(hd) {
+  const bd = hd.nextElementSibling;
+  const ch = hd.querySelector('.chevron');
+  bd.classList.toggle('open');
+  ch.classList.toggle('open');
+}
+
+// 导出签字记录
+function exportRecord() {
+  const checks = [...document.querySelectorAll('.checklist input')];
+  const allChecked = checks.every(c => c.checked);
+  const hasBlock = CHECKPOINTS.some(cp => cp.status === 'fail');
+  const verdict = document.getElementById('verdict');
+  verdict.style.display = 'block';
+  if (hasBlock) {
+    verdict.className = 'verdict blocked';
+    verdict.textContent = '❌ 发布阻塞 — 必须修复所有 FAIL 项后方可发布';
+  } else if (allChecked) {
+    verdict.className = 'verdict lgtm';
+    verdict.textContent = '✅ LGTM — 已签字，交付物满足对外发布标准';
+  } else {
+    verdict.className = 'verdict conditional';
+    verdict.textContent = '⚠️ 条件通过 — 请确认所有检查项后再发布';
+  }
+  const record = {
+    timestamp: new Date().toISOString(),
+    project: document.title.split('—')[1]?.trim() || '未知项目',
+    checkpoints: CHECKPOINTS,
+    coverage: COV,
+    approval: checks.map((c,i) => ({ item: c.nextElementSibling?.textContent?.trim(), checked: c.checked })),
+    notes: document.querySelector('textarea.notes').value,
+    verdict: hasBlock ? 'BLOCKED' : allChecked ? 'LGTM' : 'CONDITIONAL',
+  };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(record, null, 2)], {type:'application/json'}));
+  a.download = `claim-finish-approval-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+</script>
+</body>
+</html>
