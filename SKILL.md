@@ -18,6 +18,22 @@ description: >
 
 ---
 
+## Subagent 优先执行
+
+- 如当前 harness 支持 subagents，默认把 checkpoint 扫描委托给后台 subagents；主代理只负责 orchestration、阻塞判断、最终 HTML 报告装配与最终宣告。
+- 后台 worker 优先使用 Haiku-class 或同类低成本快速模型；把跨 checkpoint 的综合判断、争议裁决和最终报告拼装留给主代理。
+- 建议并行拆分为 4 个有界 worker：
+  1. Worker A：CP1 + CP2
+  2. Worker B：CP3 + CP5
+  3. Worker C：CP4 + CP7
+  4. Worker D：CP6
+- 每个 worker 只返回结构化结果：`status`、简短 `notes`、关键指标、原始文件或日志路径。不要把整份原文、大段测试日志或完整 HTML 直接贴回主对话。
+- 大体量原始内容应优先写入磁盘工件，再由主代理按需读取并装配到 `REPORT_DATA`，以节省主代理上下文。
+- 若任一 worker 发现 `❌`，应立即回传阻塞原因；主代理停止“可发布”路径，改为汇总修复清单。
+- 若当前环境不支持 subagents 或不支持模型路由，则回退到单代理执行，但仍保持“先写磁盘工件、后按需读取”的上下文节制策略。
+
+---
+
 ## Checkpoint 流程
 
 ### CP1 — proposal.md
