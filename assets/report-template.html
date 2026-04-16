@@ -3,207 +3,342 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>交付验收报告 — {{PROJECT_NAME}}</title>
+<title>交付验收报告</title>
 <style>
 :root {
   --pass:#22c55e; --warn:#f59e0b; --fail:#ef4444;
   --bg:#0f172a; --surface:#1e293b; --border:#334155;
   --text:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8;
+  --sidebar-w:220px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:'SF Pro Display',-apple-system,sans-serif;padding:32px;min-height:100vh}
-/* Header */
-.header{text-align:center;margin-bottom:40px}
-.header h1{font-size:2rem;font-weight:700;color:var(--accent);letter-spacing:-.02em}
-.header .meta{color:var(--muted);margin-top:8px;font-size:.9rem}
-/* Checkpoint cards */
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:40px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;align-items:flex-start;gap:14px;transition:transform .15s,box-shadow .15s}
-.card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
-.card.pass{border-left:4px solid var(--pass)}
-.card.warn{border-left:4px solid var(--warn)}
-.card.fail{border-left:4px solid var(--fail)}
-.card .icon{font-size:1.8rem;flex-shrink:0;line-height:1}
-.card .body .title{font-weight:600;font-size:.95rem}
-.card .body .status{font-size:.78rem;margin-top:4px;font-weight:600}
-.card.pass .status{color:var(--pass)}
-.card.warn .status{color:var(--warn)}
-.card.fail .status{color:var(--fail)}
-.card .body .notes{font-size:.78rem;color:var(--muted);margin-top:6px;line-height:1.5}
-/* Sections */
-.section{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:20px;overflow:hidden}
-.section-hd{padding:16px 20px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
-.section-hd:hover{background:rgba(255,255,255,.03)}
-.section-hd h2{font-size:1rem;font-weight:600}
-.chevron{font-size:.75rem;transition:transform .2s}
-.chevron.open{transform:rotate(180deg)}
-.section-bd{display:none;padding:0 20px 20px;border-top:1px solid var(--border)}
-.section-bd.open{display:block}
-/* Stats */
-.stats{display:flex;gap:14px;flex-wrap:wrap;margin-top:16px}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'SF Pro Display',-apple-system,sans-serif;min-height:100vh}
+
+/* ── Sidebar ── */
+.sidebar{position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;background:#0a0f1e;border-right:1px solid var(--border);padding:24px 0;overflow-y:auto;z-index:100}
+.sidebar .logo{padding:0 20px 20px;font-size:1.1rem;font-weight:700;color:var(--accent);border-bottom:1px solid var(--border)}
+.sidebar nav{padding:12px 0}
+.sidebar nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:var(--muted);text-decoration:none;font-size:.82rem;transition:all .15s;border-left:3px solid transparent}
+.sidebar nav a:hover,.sidebar nav a.active{color:var(--text);background:rgba(56,189,248,.06);border-left-color:var(--accent)}
+.sidebar nav a .nav-icon{font-size:1rem;width:22px;text-align:center;flex-shrink:0}
+.sidebar nav a .nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:auto}
+.sidebar nav .divider{height:1px;background:var(--border);margin:8px 20px}
+
+/* ── Main ── */
+.main{margin-left:var(--sidebar-w);padding:32px 40px 80px}
+.header{margin-bottom:32px}
+.header h1{font-size:1.8rem;font-weight:700;color:var(--accent);letter-spacing:-.02em}
+.header .meta{color:var(--muted);margin-top:6px;font-size:.85rem}
+
+/* ── Dashboard grid ── */
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:36px}
+.dash-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:transform .15s,box-shadow .15s;text-decoration:none;color:inherit}
+.dash-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.dash-card.pass{border-left:4px solid var(--pass)}
+.dash-card.warn{border-left:4px solid var(--warn)}
+.dash-card.fail{border-left:4px solid var(--fail)}
+.dash-card .dc-top{display:flex;align-items:center;gap:10px}
+.dash-card .dc-icon{font-size:1.4rem}
+.dash-card .dc-title{font-weight:600;font-size:.85rem}
+.dash-card .dc-status{font-size:.72rem;font-weight:600;margin-top:6px}
+.dash-card.pass .dc-status{color:var(--pass)}
+.dash-card.warn .dc-status{color:var(--warn)}
+.dash-card.fail .dc-status{color:var(--fail)}
+.dash-card .dc-notes{font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4}
+
+/* ── CP section ── */
+.cp-section{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:24px;overflow:hidden;scroll-margin-top:24px}
+.cp-header{padding:20px 24px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border)}
+.cp-header .cp-icon{font-size:1.6rem}
+.cp-header .cp-title{font-size:1.05rem;font-weight:700;flex:1}
+.cp-header .cp-badge{font-size:.75rem;font-weight:700;padding:4px 12px;border-radius:20px}
+.cp-badge.pass{background:rgba(34,197,94,.15);color:var(--pass)}
+.cp-badge.warn{background:rgba(245,158,11,.15);color:var(--warn)}
+.cp-badge.fail{background:rgba(239,68,68,.15);color:var(--fail)}
+.cp-notes{padding:14px 24px;font-size:.85rem;color:var(--muted);border-bottom:1px solid var(--border);line-height:1.6}
+
+/* ── File content panel ── */
+.file-panel{border-top:1px solid var(--border)}
+.file-panel-hd{padding:12px 24px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;font-size:.82rem;color:var(--muted);transition:background .1s}
+.file-panel-hd:hover{background:rgba(255,255,255,.03)}
+.file-panel-hd .fp-name{font-family:'SF Mono','Fira Code',monospace;color:var(--accent);font-weight:600}
+.file-panel-hd .fp-path{margin-left:12px;font-size:.72rem}
+.file-panel-hd .chevron{font-size:.65rem;transition:transform .2s}
+.file-panel-hd .chevron.open{transform:rotate(180deg)}
+.file-panel-bd{display:none;border-top:1px solid rgba(51,65,85,.5)}
+.file-panel-bd.open{display:block}
+.raw-content{font-family:'SF Mono','Fira Code','Cascadia Code',monospace;font-size:.78rem;line-height:1.8;background:#060a14;padding:20px 24px;white-space:pre-wrap;word-break:break-word;overflow-x:auto;max-height:600px;overflow-y:auto;color:#c9d1d9}
+.raw-content::-webkit-scrollbar{width:6px;height:6px}
+.raw-content::-webkit-scrollbar-track{background:transparent}
+.raw-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── Stats ── */
+.stats-row{display:flex;gap:14px;flex-wrap:wrap;padding:16px 24px}
 .stat{background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.25);border-radius:10px;padding:12px 18px;text-align:center;min-width:90px}
-.stat .val{font-size:1.8rem;font-weight:700;color:var(--accent);line-height:1}
-.stat .lbl{font-size:.7rem;color:var(--muted);margin-top:4px}
-/* Coverage bars */
-.cov-row{display:flex;align-items:center;gap:12px;margin:10px 0;font-size:.85rem}
+.stat .val{font-size:1.6rem;font-weight:700;color:var(--accent);line-height:1}
+.stat .lbl{font-size:.68rem;color:var(--muted);margin-top:4px}
+.cov-row{display:flex;align-items:center;gap:12px;margin:8px 24px;font-size:.82rem}
 .cov-lbl{width:72px;color:var(--muted)}
 .cov-bar-wrap{flex:1;height:10px;background:var(--border);border-radius:5px;overflow:hidden}
 .cov-fill{height:100%;border-radius:5px;transition:width .8s ease}
 .cov-pct{width:40px;text-align:right;font-weight:600}
-/* File tree */
-.file-tree{font-family:'SF Mono','Fira Code',monospace;font-size:.78rem;line-height:1.9;background:#0a0f1e;border-radius:8px;padding:16px;margin-top:12px;white-space:pre;overflow-x:auto}
-/* Sign-off */
-.signoff{background:linear-gradient(135deg,#1e293b,#0f172a);border:2px solid var(--accent);border-radius:16px;padding:32px;margin-top:32px}
-.signoff h2{font-size:1.2rem;font-weight:700;color:var(--accent);margin-bottom:20px}
+
+/* ── Sign-off ── */
+.signoff{background:linear-gradient(135deg,#1e293b,#0f172a);border:2px solid var(--accent);border-radius:16px;padding:32px;margin-top:36px;scroll-margin-top:24px}
+.signoff h2{font-size:1.15rem;font-weight:700;color:var(--accent);margin-bottom:20px}
 .checklist{list-style:none}
-.checklist li{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.checklist li{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
 .checklist li:last-child{border-bottom:none}
 .checklist input[type=checkbox]{width:17px;height:17px;margin-top:2px;cursor:pointer;accent-color:var(--accent);flex-shrink:0}
-.checklist label{cursor:pointer;font-size:.88rem;line-height:1.5}
-textarea.notes{width:100%;background:#0a0f1e;border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:.85rem;margin-top:18px;resize:vertical;min-height:72px;font-family:inherit}
-textarea.notes:focus{outline:none;border-color:var(--accent)}
-.export-btn{background:var(--accent);color:#0f172a;border:none;border-radius:10px;padding:13px 28px;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:18px;width:100%;transition:opacity .15s,transform .1s}
+.checklist label{cursor:pointer;font-size:.85rem;line-height:1.5}
+textarea.notes-input{width:100%;background:#0a0f1e;border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:.82rem;margin-top:18px;resize:vertical;min-height:72px;font-family:inherit}
+textarea.notes-input:focus{outline:none;border-color:var(--accent)}
+.export-btn{background:var(--accent);color:#0f172a;border:none;border-radius:10px;padding:13px 28px;font-size:.92rem;font-weight:700;cursor:pointer;margin-top:18px;width:100%;transition:opacity .15s,transform .1s}
 .export-btn:hover{opacity:.9;transform:scale(1.01)}
-/* Verdict banner */
-.verdict{text-align:center;padding:20px;border-radius:12px;margin-top:20px;font-size:1.3rem;font-weight:700;display:none}
+.verdict{text-align:center;padding:20px;border-radius:12px;margin-top:20px;font-size:1.2rem;font-weight:700;display:none}
 .verdict.lgtm{background:rgba(34,197,94,.12);color:var(--pass);border:2px solid var(--pass)}
 .verdict.conditional{background:rgba(245,158,11,.12);color:var(--warn);border:2px solid var(--warn)}
 .verdict.blocked{background:rgba(239,68,68,.12);color:var(--fail);border:2px solid var(--fail)}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .sidebar{display:none}
+  .main{margin-left:0;padding:20px 16px 60px}
+  .dash-grid{grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>交付验收报告</h1>
-  <div class="meta">项目：{{PROJECT_NAME}} &nbsp;·&nbsp; 生成时间：{{REPORT_DATE}}</div>
-</div>
+<!-- Sidebar — 由 JS 动态填充 -->
+<aside class="sidebar">
+  <div class="logo">交付验收报告</div>
+  <nav id="sideNav"></nav>
+</aside>
 
-<!-- Checkpoint 状态卡片 -->
-<div class="grid" id="cpGrid"></div>
+<!-- Main content — 全部由 JS 从 REPORT_DATA 渲染 -->
+<div class="main">
+  <div class="header">
+    <h1 id="headerTitle">交付验收报告</h1>
+    <div class="meta" id="headerMeta"></div>
+  </div>
 
-<!-- 测试覆盖率 -->
-<div class="section">
-  <div class="section-hd" onclick="toggle(this)">
-    <h2>🧪 测试覆盖率</h2><span class="chevron">▼</span>
-  </div>
-  <div class="section-bd">
-    <div class="stats">
-      <div class="stat"><div class="val">{{TEST_TOTAL}}</div><div class="lbl">总测试数</div></div>
-      <div class="stat"><div class="val" style="color:var(--pass)">{{TEST_PASS}}</div><div class="lbl">通过</div></div>
-      <div class="stat"><div class="val" style="color:var(--fail)">{{TEST_FAIL}}</div><div class="lbl">失败</div></div>
-      <div class="stat"><div class="val">{{COV_LINE}}%</div><div class="lbl">行覆盖率</div></div>
-    </div>
-    <div style="margin-top:16px" id="covBars"></div>
-  </div>
-</div>
+  <!-- Dashboard 概览卡片 -->
+  <div class="dash-grid" id="dashGrid"></div>
 
-<!-- release/final/ 文件树 -->
-<div class="section">
-  <div class="section-hd" onclick="toggle(this)">
-    <h2>📦 release/final/ 文件清单</h2><span class="chevron">▼</span>
-  </div>
-  <div class="section-bd">
-    <div style="display:flex;gap:24px;margin-top:12px;font-size:.85rem;color:var(--muted)">
-      <span>共 <strong style="color:var(--text)">{{MANIFEST_COUNT}}</strong> 个文件</span>
-      <span>总大小 <strong style="color:var(--text)">{{PACKAGE_SIZE}}</strong></span>
-    </div>
-    <div class="file-tree">{{FILE_TREE}}</div>
-  </div>
-</div>
+  <!-- Checkpoint 详情区（每个 CP 一个 section，含原始文件内容） -->
+  <div id="cpSections"></div>
 
-<!-- 签字确认区 -->
-<div class="signoff">
-  <h2>最终签字确认</h2>
-  <ul class="checklist">
-    <li><input type="checkbox" id="c1"><label for="c1">proposal.md 已确认，需求无歧义</label></li>
-    <li><input type="checkbox" id="c2"><label for="c2">validation.md 已确认，所有验收标准均有测试覆盖</label></li>
-    <li><input type="checkbox" id="c3"><label for="c3">三方文档（VC / 用户 / 开发者）均已审阅，无未完成占位符</label></li>
-    <li><input type="checkbox" id="c4"><label for="c4">白盒测试全部通过，覆盖率符合要求</label></li>
-    <li><input type="checkbox" id="c5"><label for="c5">用户操作手册已审阅，步骤可独立执行</label></li>
-    <li><input type="checkbox" id="c6"><label for="c6">release/final/ 包体已验证，无禁止文件</label></li>
-    <li><input type="checkbox" id="c7"><label for="c7">本人确认以上交付物满足对外发布标准</label></li>
-  </ul>
-  <textarea class="notes" placeholder="补充说明（可选）：记录警告项处理决策或豁免原因…"></textarea>
-  <button class="export-btn" onclick="exportRecord()">导出签字确认记录</button>
-  <div class="verdict" id="verdict"></div>
+  <!-- 签字确认区 -->
+  <div class="signoff" id="signoffSection">
+    <h2>最终签字确认</h2>
+    <ul class="checklist" id="signoffList"></ul>
+    <textarea class="notes-input" placeholder="补充说明（可选）：记录警告项处理决策或豁免原因..."></textarea>
+    <button class="export-btn" onclick="exportRecord()">导出签字确认记录</button>
+    <div class="verdict" id="verdict"></div>
+  </div>
 </div>
 
 <script>
-// ── 数据注入点（Claude 替换此处） ──────────────────────────
-const CHECKPOINTS = {{CHECKPOINT_DATA}};
-const COV = { line: {{COV_LINE}}, branch: {{COV_BRANCH}}, func: {{COV_FUNC}} };
-// ──────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+// REPORT_DATA — Claude 在生成报告时直接写入此对象，不做模板替换
+// ════════════════════════════════════════════════════════════
+// window.REPORT_DATA = { ... };  // Claude 注入点（见 skill.md 说明）
+// ════════════════════════════════════════════════════════════
 
-const STATUS_MAP = {
-  pass: { cls:'pass', label:'✅ 通过' },
-  warn: { cls:'warn', label:'⚠️ 警告' },
-  fail: { cls:'fail', label:'❌ 阻塞' },
-};
+(function render() {
+  const D = window.REPORT_DATA;
+  if (!D) {
+    document.getElementById('headerTitle').textContent = '数据未加载';
+    document.getElementById('headerMeta').textContent = '请确认 REPORT_DATA 已注入';
+    return;
+  }
 
-// 渲染 checkpoint 卡片
-const grid = document.getElementById('cpGrid');
-CHECKPOINTS.forEach(cp => {
-  const s = STATUS_MAP[cp.status] || STATUS_MAP.warn;
-  grid.innerHTML += `
-    <div class="card ${s.cls}">
-      <div class="icon">${cp.icon}</div>
-      <div class="body">
-        <div class="title">${cp.title}</div>
-        <div class="status">${s.label}</div>
-        <div class="notes">${cp.notes}</div>
-      </div>
-    </div>`;
-});
+  const STATUS = {
+    pass: { cls:'pass', label:'通过', badge:'通过' },
+    warn: { cls:'warn', label:'警告', badge:'警告' },
+    fail: { cls:'fail', label:'阻塞', badge:'阻塞' },
+  };
 
-// 渲染覆盖率条
-const bars = document.getElementById('covBars');
-[['行覆盖', COV.line], ['分支覆盖', COV.branch], ['函数覆盖', COV.func]].forEach(([lbl, pct]) => {
-  const color = pct >= 80 ? 'var(--pass)' : pct >= 60 ? 'var(--warn)' : 'var(--fail)';
-  bars.innerHTML += `
-    <div class="cov-row">
-      <span class="cov-lbl">${lbl}</span>
-      <div class="cov-bar-wrap"><div class="cov-fill" style="width:${pct}%;background:${color}"></div></div>
-      <span class="cov-pct" style="color:${color}">${pct}%</span>
-    </div>`;
-});
+  // ── Header ──
+  document.title = '交付验收报告 — ' + D.project;
+  document.getElementById('headerMeta').innerHTML =
+    '项目：<strong>' + esc(D.project) + '</strong> &nbsp;&middot;&nbsp; ' + esc(D.date);
 
-// 折叠/展开
-function toggle(hd) {
-  const bd = hd.nextElementSibling;
+  // ── Sidebar nav ──
+  const nav = document.getElementById('sideNav');
+  let navHtml = '';
+  D.checkpoints.forEach(cp => {
+    const s = STATUS[cp.status] || STATUS.warn;
+    navHtml += '<a href="#' + cp.id + '">'
+      + '<span class="nav-icon">' + cp.icon + '</span>'
+      + '<span>' + esc(cp.title) + '</span>'
+      + '<span class="nav-dot" style="background:var(--' + s.cls + ')"></span>'
+      + '</a>';
+  });
+  navHtml += '<div class="divider"></div>';
+  navHtml += '<a href="#signoffSection"><span class="nav-icon">&#9998;</span><span>签字确认</span></a>';
+  nav.innerHTML = navHtml;
+
+  // ── Dashboard grid ──
+  const grid = document.getElementById('dashGrid');
+  D.checkpoints.forEach(cp => {
+    const s = STATUS[cp.status] || STATUS.warn;
+    grid.innerHTML += '<a href="#' + cp.id + '" class="dash-card ' + s.cls + '">'
+      + '<div class="dc-top"><span class="dc-icon">' + cp.icon + '</span>'
+      + '<span class="dc-title">' + esc(cp.title) + '</span></div>'
+      + '<div class="dc-status">' + s.label + '</div>'
+      + '<div class="dc-notes">' + esc(cp.notes) + '</div>'
+      + '</a>';
+  });
+
+  // ── CP sections with raw file content ──
+  const sections = document.getElementById('cpSections');
+  D.checkpoints.forEach(cp => {
+    const s = STATUS[cp.status] || STATUS.warn;
+    let html = '<div class="cp-section" id="' + cp.id + '">';
+
+    // Header
+    html += '<div class="cp-header">'
+      + '<span class="cp-icon">' + cp.icon + '</span>'
+      + '<span class="cp-title">' + esc(cp.title) + '</span>'
+      + '<span class="cp-badge ' + s.cls + '">' + s.badge + '</span>'
+      + '</div>';
+
+    // Notes
+    if (cp.notes) {
+      html += '<div class="cp-notes">' + esc(cp.notes) + '</div>';
+    }
+
+    // Test stats (CP4)
+    if (cp.id === 'cp4' && D.tests) {
+      const t = D.tests;
+      html += '<div class="stats-row">'
+        + stat(t.total, '总测试数')
+        + stat(t.pass, '通过', '--pass')
+        + stat(t.fail, '失败', '--fail')
+        + '</div>';
+      if (t.coverage) {
+        html += covBar('行覆盖', t.coverage.line)
+          + covBar('分支覆盖', t.coverage.branch)
+          + covBar('函数覆盖', t.coverage.func);
+      }
+    }
+
+    // Release stats (CP6)
+    if (cp.id === 'cp6' && D.release) {
+      const r = D.release;
+      html += '<div class="stats-row">'
+        + stat(r.manifestCount, '文件总数')
+        + stat(r.packageSize, '包体积')
+        + '</div>';
+    }
+
+    // Raw file content panels
+    if (cp.files && cp.files.length > 0) {
+      cp.files.forEach((f, i) => {
+        const panelId = cp.id + '-file-' + i;
+        html += '<div class="file-panel">'
+          + '<div class="file-panel-hd" onclick="togglePanel(\'' + panelId + '\',this)">'
+          + '<div><span class="fp-name">' + esc(f.name) + '</span>'
+          + (f.path ? '<span class="fp-path">' + esc(f.path) + '</span>' : '')
+          + '</div><span class="chevron">&#9660;</span></div>'
+          + '<div class="file-panel-bd" id="' + panelId + '">'
+          + '<pre class="raw-content">' + esc(f.content || '(empty)') + '</pre>'
+          + '</div></div>';
+      });
+    }
+
+    html += '</div>';
+    sections.innerHTML += html;
+  });
+
+  // ── Signoff checklist ──
+  const signoff = document.getElementById('signoffList');
+  const labels = [
+    'proposal.md 已确认，需求无歧义',
+    'validation.md 已确认，所有验收标准均有测试覆盖',
+    '三方文档（VC / 用户 / 开发者）均已审阅，无占位符',
+    '白盒测试全部通过，覆盖率符合要求',
+    '用户操作手册已审阅，步骤可独立执行',
+    'release/final/ 包体已验证，无禁止文件',
+    'Playwright 回放脚本已验证，关键用户流程可回放',
+    '本人确认以上交付物满足对外发布标准',
+  ];
+  labels.forEach((lbl, i) => {
+    signoff.innerHTML += '<li><input type="checkbox" id="sc' + i + '">'
+      + '<label for="sc' + i + '">' + lbl + '</label></li>';
+  });
+
+  // ── Scroll spy ──
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+        const link = document.querySelector('.sidebar nav a[href="#' + e.target.id + '"]');
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+  document.querySelectorAll('.cp-section, .signoff').forEach(el => observer.observe(el));
+
+  // ── Helpers ──
+  function stat(val, lbl, colorVar) {
+    const style = colorVar ? ' style="color:var(' + colorVar + ')"' : '';
+    return '<div class="stat"><div class="val"' + style + '>' + esc(String(val ?? '—')) + '</div>'
+      + '<div class="lbl">' + lbl + '</div></div>';
+  }
+  function covBar(lbl, pct) {
+    pct = pct ?? 0;
+    const c = pct >= 80 ? 'var(--pass)' : pct >= 60 ? 'var(--warn)' : 'var(--fail)';
+    return '<div class="cov-row"><span class="cov-lbl">' + lbl + '</span>'
+      + '<div class="cov-bar-wrap"><div class="cov-fill" style="width:' + pct + '%;background:' + c + '"></div></div>'
+      + '<span class="cov-pct" style="color:' + c + '">' + pct + '%</span></div>';
+  }
+})();
+
+function esc(s) {
+  const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+function togglePanel(id, hd) {
+  const bd = document.getElementById(id);
   const ch = hd.querySelector('.chevron');
   bd.classList.toggle('open');
   ch.classList.toggle('open');
 }
 
-// 导出签字记录
 function exportRecord() {
-  const checks = [...document.querySelectorAll('.checklist input')];
+  const D = window.REPORT_DATA;
+  const checks = [...document.querySelectorAll('#signoffList input')];
   const allChecked = checks.every(c => c.checked);
-  const hasBlock = CHECKPOINTS.some(cp => cp.status === 'fail');
-  const verdict = document.getElementById('verdict');
-  verdict.style.display = 'block';
+  const hasBlock = D && D.checkpoints.some(cp => cp.status === 'fail');
+  const v = document.getElementById('verdict');
+  v.style.display = 'block';
   if (hasBlock) {
-    verdict.className = 'verdict blocked';
-    verdict.textContent = '❌ 发布阻塞 — 必须修复所有 FAIL 项后方可发布';
+    v.className = 'verdict blocked';
+    v.textContent = '发布阻塞 — 必须修复所有 FAIL 项后方可发布';
   } else if (allChecked) {
-    verdict.className = 'verdict lgtm';
-    verdict.textContent = '✅ LGTM — 已签字，交付物满足对外发布标准';
+    v.className = 'verdict lgtm';
+    v.textContent = 'LGTM — 已签字，交付物满足对外发布标准';
   } else {
-    verdict.className = 'verdict conditional';
-    verdict.textContent = '⚠️ 条件通过 — 请确认所有检查项后再发布';
+    v.className = 'verdict conditional';
+    v.textContent = '条件通过 — 请确认所有检查项后再发布';
   }
   const record = {
     timestamp: new Date().toISOString(),
-    project: document.title.split('—')[1]?.trim() || '未知项目',
-    checkpoints: CHECKPOINTS,
-    coverage: COV,
-    approval: checks.map((c,i) => ({ item: c.nextElementSibling?.textContent?.trim(), checked: c.checked })),
-    notes: document.querySelector('textarea.notes').value,
+    project: D ? D.project : 'unknown',
+    checkpoints: D ? D.checkpoints : [],
+    tests: D ? D.tests : null,
+    release: D ? D.release : null,
+    approval: checks.map(c => ({ item: c.nextElementSibling?.textContent?.trim(), checked: c.checked })),
+    notes: document.querySelector('.notes-input').value,
     verdict: hasBlock ? 'BLOCKED' : allChecked ? 'LGTM' : 'CONDITIONAL',
   };
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(record, null, 2)], {type:'application/json'}));
-  a.download = `claim-finish-approval-${new Date().toISOString().slice(0,10)}.json`;
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' }));
+  a.download = 'claim-finish-approval-' + new Date().toISOString().slice(0, 10) + '.json';
   a.click();
 }
 </script>

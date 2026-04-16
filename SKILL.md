@@ -1,9 +1,10 @@
 ---
 name: claim-finish
 description: >
-  交付前最终验收关卡。在宣布任务完成、声称工作完毕之前，系统性核查 6 项交付物：
+  交付前最终验收关卡。在宣布任务完成、声称工作完毕之前，系统性核查 7 项交付物：
   (1) proposal.md 需求提案, (2) validation.md 验收标准, (3) VC/用户/开发者三方文档,
-  (4) 白盒测试 + 快照报告, (5) 用户操作手册, (6) release/final/ 干净交付包。
+  (4) 白盒测试 + 快照报告, (5) 用户操作手册, (6) release/final/ 干净交付包,
+  (7) Playwright 可回放脚本。
   完成后生成单页 HTML 验收报告并用 Chrome 打开。
   仅由用户手动触发：/claim-finish、交付检查、最终验收、claim finish。
   禁止被 hook 或其他 skill 自动调用。
@@ -11,7 +12,7 @@ description: >
 
 # Claim Finish — 交付前最终验收关卡
 
-运行 6 个 checkpoint，依次核查每一项交付物。每项记录 ✅/⚠️/❌ 三级状态。全部完成后生成 HTML 验收报告。
+运行 7 个 checkpoint，依次核查每一项交付物。每项记录 ✅/⚠️/❌ 三级状态。全部完成后生成 HTML 验收报告。
 
 **阻塞规则：** 任何 ❌ 存在时，不得宣告任务完成，必须列出修复清单后停止。
 
@@ -160,43 +161,184 @@ dist/build/  |  *.egg-info/  |  coverage/（原始数据）
 
 ---
 
-## HTML 验收报告
+### CP7 — Playwright 可回放脚本
 
-**所有 6 个 checkpoint 完成后**，生成单页验收报告。
+**目标：** 项目包含可回放的 Playwright 端到端测试脚本，能够录制并回放关键用户操作流程，支持可选的前置设置脚本（setup pre-script）。
 
-1. 读取模板：`~/.claude/skills/claim-finish/assets/report-template.html`
-2. 将以下占位符替换为实际数据：
+**Step 1 — 探测 Playwright 配置**
 
-| 占位符 | 替换内容 |
-|--------|---------|
-| `{{PROJECT_NAME}}` | 当前目录名 |
-| `{{REPORT_DATE}}` | `date +%Y-%m-%d` 输出 |
-| `{{CHECKPOINT_DATA}}` | 6 条 JSON 对象（见下方格式） |
-| `{{TEST_TOTAL}}` | 测试总数（字符串，无数据填 `"—"`） |
-| `{{TEST_PASS}}` | 通过数 |
-| `{{TEST_FAIL}}` | 失败数 |
-| `{{COV_LINE}}` | 行覆盖率整数（0–100，无数据填 `0`） |
-| `{{COV_BRANCH}}` | 分支覆盖率整数 |
-| `{{COV_FUNC}}` | 函数覆盖率整数 |
-| `{{FILE_TREE}}` | `find release/final -type f \| sort` 输出，HTML 转义后填入 |
-| `{{MANIFEST_COUNT}}` | MANIFEST.txt 行数 |
-| `{{PACKAGE_SIZE}}` | `du -sh release/final` 输出 |
+搜索以下标志文件（按优先级）：
+- `playwright.config.ts` / `playwright.config.js` / `playwright.config.mjs`
+- `package.json` 中含 `@playwright/test` 依赖
+- `e2e/`、`tests/e2e/`、`tests/playwright/` 目录
 
-**CHECKPOINT_DATA 格式**（6 条，顺序固定）：
+**Step 2 — 检查回放脚本**
 
-```json
-[
-  {"id":"cp1","icon":"📋","title":"proposal.md",     "status":"pass|warn|fail","notes":"简短说明"},
-  {"id":"cp2","icon":"✔️", "title":"validation.md",  "status":"pass|warn|fail","notes":"简短说明"},
-  {"id":"cp3","icon":"📚","title":"三方文档",         "status":"pass|warn|fail","notes":"简短说明"},
-  {"id":"cp4","icon":"🧪","title":"白盒测试",         "status":"pass|warn|fail","notes":"简短说明"},
-  {"id":"cp5","icon":"📖","title":"用户操作手册",     "status":"pass|warn|fail","notes":"简短说明"},
-  {"id":"cp6","icon":"📦","title":"release/final/",  "status":"pass|warn|fail","notes":"简短说明"}
-]
+在以下目录搜索 Playwright 测试脚本（`*.spec.ts`、`*.spec.js`、`*.test.ts`、`*.test.js`）：
+- `e2e/`、`tests/e2e/`、`tests/playwright/`、`tests/`、`test/`
+
+对每个脚本检查：
+1. 至少包含有意义的用户交互步骤（`page.goto`、`page.click`、`page.fill`、`page.locator`、`expect` 等）。
+2. 脚本可独立描述一条完整用户操作路径（从打开页面到验证结果）。
+3. 记录脚本总数和覆盖的用户流程。
+
+**Step 3 — 检查回放配置**
+
+读取 `playwright.config.*`，确认以下回放关键配置：
+- `use.trace`：是否启用 trace 录制（`on` / `on-first-retry` / `retain-on-failure`）
+- `use.video`：是否启用视频录制（`on` / `retain-on-failure`）
+- `use.screenshot`：是否启用截图（`on` / `only-on-failure`）
+- `outputDir` / `testDir`：输出目录是否合理
+
+至少需要 trace 或 video 其中之一启用，以保证脚本可回放。
+
+**Step 4 — 检查前置设置脚本（setup pre-script）**
+
+搜索前置设置相关配置和文件：
+- `playwright.config.*` 中的 `globalSetup` / `globalTeardown` 字段
+- `playwright.config.*` 中 `projects` 数组里的 `setup` 依赖项（`dependencies: ['setup']`）
+- `tests/setup/`、`e2e/setup/`、`fixtures/` 目录下的设置脚本
+- `.auth/` 或 `playwright/.auth/` 状态文件（认证状态保存）
+
+前置设置脚本允许包含：
+- 环境初始化（数据库 seed、服务启动、测试数据注入）
+- 认证状态准备（登录并保存 `storageState`）
+- 依赖服务健康检查
+
+记录：`globalSetup` 是否配置、setup project 是否存在、设置脚本列表。
+
+**Step 5 — 试运行验证**
+
+执行 `npx playwright test --list` 确认脚本可被解析发现（不实际运行全部测试）。采集：
+- 可发现的测试总数
+- 测试文件列表
+- 是否有解析错误
+
+**状态判定：**
+- ✅ Playwright 已配置，至少 1 个回放脚本存在且含有意义交互步骤，`--list` 通过，trace 或 video 已启用
+- ⚠️ Playwright 已配置但：回放脚本无实质交互 / `--list` 有警告 / trace 和 video 均未启用 / 无前置设置脚本（记录说明）
+- ❌ 项目无 Playwright 配置或无任何回放脚本（硬性阻塞）
+
+---
+
+## HTML 验收报告（Index 首页）
+
+**所有 7 个 checkpoint 完成后**，生成单页 Index 首页，内嵌所有 checkpoint 原始文件内容。
+
+**此页面不是模板**——不使用 `{{}}` 占位符替换。HTML 结构和渲染逻辑已内置在 `~/.claude/skills/claim-finish/assets/report-template.html` 中，Claude 只需注入一个 `REPORT_DATA` JSON 对象即可。
+
+### 生成步骤
+
+1. **读取** `~/.claude/skills/claim-finish/assets/report-template.html` 全文。
+2. **收集数据**：读取每个 checkpoint 涉及的原始文件内容（proposal.md 全文、validation.md 全文、三方文档全文、测试输出、用户手册全文、MANIFEST.txt、playwright 配置和脚本内容等）。
+3. **构建 `REPORT_DATA` 对象**（见下方格式）。
+4. **在 HTML 中找到注释行** `// window.REPORT_DATA = { ... };`，将其替换为实际的 `window.REPORT_DATA = { ... };`（JSON 内容内联，确保字符串中的 `<`、`>`、`&` 已转义）。
+5. **写入** `/tmp/claim-finish-report-YYYYMMDD.html`（日期用实际日期）。
+6. **立即执行**：`open -a "Google Chrome" /tmp/claim-finish-report-YYYYMMDD.html`
+
+### REPORT_DATA 格式
+
+```js
+window.REPORT_DATA = {
+  project: "当前目录名",
+  date: "YYYY-MM-DD",
+  checkpoints: [
+    {
+      id: "cp1",
+      icon: "📋",
+      title: "proposal.md",
+      status: "pass|warn|fail",
+      notes: "简短状态说明",
+      files: [
+        { name: "proposal.md", path: "docs/proposal.md", content: "原始文件全文内容..." }
+      ]
+    },
+    {
+      id: "cp2",
+      icon: "✔️",
+      title: "validation.md",
+      status: "pass|warn|fail",
+      notes: "简短状态说明",
+      files: [
+        { name: "validation.md", path: "validation.md", content: "原始文件全文内容..." }
+      ]
+    },
+    {
+      id: "cp3",
+      icon: "📚",
+      title: "三方文档",
+      status: "pass|warn|fail",
+      notes: "简短状态说明",
+      files: [
+        { name: "vc-handout.md", path: "docs/vc-handout.md", content: "..." },
+        { name: "user-handout.md", path: "docs/user-handout.md", content: "..." },
+        { name: "INDEX.md", path: "docs/INDEX.md", content: "..." }
+      ]
+    },
+    {
+      id: "cp4",
+      icon: "🧪",
+      title: "白盒测试",
+      status: "pass|warn|fail",
+      notes: "简短状态说明",
+      files: [
+        { name: "测试输出", path: "", content: "完整测试命令输出..." }
+      ]
+    },
+    {
+      id: "cp5",
+      icon: "📖",
+      title: "用户操作手册",
+      status: "pass|warn|fail",
+      notes: "简短状态说明",
+      files: [
+        { name: "README.md", path: "README.md", content: "原始文件全文内容..." }
+      ]
+    },
+    {
+      id: "cp6",
+      icon: "📦",
+      title: "release/final/",
+      status: "pass|warn|fail",
+      notes: "简短状态说明",
+      files: [
+        { name: "MANIFEST.txt", path: "release/final/MANIFEST.txt", content: "文件清单全文..." },
+        { name: "目录树", path: "", content: "find release/final 输出..." }
+      ]
+    },
+    {
+      id: "cp7",
+      icon: "🎭",
+      title: "Playwright 回放脚本",
+      status: "pass|warn|fail",
+      notes: "简短状态说明",
+      files: [
+        { name: "playwright.config.ts", path: "playwright.config.ts", content: "配置文件全文..." },
+        { name: "脚本列表 (--list)", path: "", content: "npx playwright test --list 输出..." },
+        { name: "setup.ts", path: "tests/setup/setup.ts", content: "前置脚本内容（若存在）..." }
+      ]
+    }
+  ],
+  tests: {
+    total: "10",
+    pass: "10",
+    fail: "0",
+    coverage: { line: 80, branch: 70, func: 85 }
+  },
+  release: {
+    fileTree: "find release/final 输出",
+    manifestCount: "42",
+    packageSize: "1.2M"
+  }
+};
 ```
 
-3. 将填充后的内容写入 `/tmp/claim-finish-report-YYYYMMDD.html`（日期用实际日期）。
-4. 立即执行：`open -a "Google Chrome" /tmp/claim-finish-report-YYYYMMDD.html`
+**注意事项：**
+- `files` 数组中的每项 `content` 字段包含**原始文件全文**，页面会在可折叠面板中展示
+- 文件内容中的特殊字符（`<`、`>`、`&`、`\`、引号）必须正确 JSON 转义
+- 文件不存在时 `content` 填 `"(文件不存在)"`，`files` 数组仍需保留对应条目
+- `tests` 和 `release` 字段无数据时设为 `null`，页面会优雅降级
+- 每个 checkpoint 的 `files` 数组应包含该 CP 检查过程中实际读取的所有文件
 
 ---
 
