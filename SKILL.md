@@ -1,10 +1,10 @@
 ---
 name: claim-finish
 description: >
-  交付前最终验收关卡。在宣布任务完成、声称工作完毕之前，系统性核查 7 项交付物：
+  交付前最终验收关卡。在宣布任务完成、声称工作完毕之前，系统性核查 8 项交付物：
   (1) proposal.md 需求提案, (2) validation.md 验收标准, (3) VC/用户/开发者三方文档,
   (4) 白盒测试 + 快照报告, (5) 用户操作手册, (6) release/final/ 干净交付包,
-  (7) Playwright 可回放脚本。
+  (7) Playwright 可回放脚本, (8) Demo 视频 + 快照图片。
   完成后生成单页 HTML 验收报告并用 Chrome 打开。
   仅由用户手动触发：/claim-finish、交付检查、最终验收、claim finish。
   禁止被 hook 或其他 skill 自动调用。
@@ -26,7 +26,7 @@ description: >
   1. Worker A：CP1 + CP2
   2. Worker B：CP3 + CP5
   3. Worker C：CP4 + CP7
-  4. Worker D：CP6
+  4. Worker D：CP6 + CP8
 - 每个 worker 只返回结构化结果：`status`、简短 `notes`、关键指标、原始文件或日志路径。不要把整份原文、大段测试日志或完整 HTML 直接贴回主对话。
 - 大体量原始内容应优先写入磁盘工件，再由主代理按需读取并装配到 `REPORT_DATA`，以节省主代理上下文。
 - 若任一 worker 发现 `❌`，应立即回传阻塞原因；主代理停止“可发布”路径，改为汇总修复清单。
@@ -237,9 +237,51 @@ dist/build/  |  *.egg-info/  |  coverage/（原始数据）
 
 ---
 
+### CP8 — Demo 视频 + 快照图片
+
+**目标：** 通过 Playwright 脚本实际产出 Demo 可用视频（.webm/.mp4）和快照图片，作为对外演示素材。
+
+**Step 1 — 探测 Playwright 配置**
+
+搜索 `playwright.config.*`，确认以下关键配置：
+- `use.video` = `'always'`（全程录屏）
+- `use.screenshot` = `'always'`（每步快照）
+- `use.trace`（可选，用于调试）
+
+若配置缺失，提示需要补充后继续。
+
+**Step 2 — 确认 demo 脚本存在**
+
+搜索 `demo_video.spec.ts`（或类似命名：`*demo*`, `*record*`, `*showcase*`），检查：
+1. 脚本至少包含 3 个以上有意义交互步骤（`page.goto`、`page.click`、`page.fill`、`page.locator`、`expect` 等）
+2. 脚本描述了一条完整用户操作路径（从打开页面到验证结果）
+3. 无未完成标记（`TODO`、`PLACEHOLDER` 等）
+
+**Step 3 — 运行测试，捕获产物**
+
+```bash
+npx playwright test demo_video.spec.ts --project=chromium
+```
+
+产物目录（通常 `test-results/` 或 `playwright-report/`）：
+- 视频文件：`.webm` 或 `.mp4`
+- 快照图片：`.png`
+
+采集：
+- 视频文件路径和大小
+- 快照图片数量和路径
+- 是否有错误中断
+
+**Step 4 — 状态判定：**
+- ✅ `video: 'always'` + `screenshot: 'always'` 均已配置，demo 脚本存在且含 ≥3 交互步骤，视频文件（.webm/.mp4）已产出，快照图片已产出
+- ⚠️ 配置正确，但仅产出视频或仅产出快照（缺其中一项）
+- ❌ 缺少 demo 脚本（硬性阻塞），或 `video`/`screenshot` 未配置为 `always`（硬性阻塞），或运行报错中断
+
+---
+
 ## HTML 验收报告（Index 首页）
 
-**所有 7 个 checkpoint 完成后**，生成单页 Index 首页，内嵌所有 checkpoint 原始文件内容。
+**所有 8 个 checkpoint 完成后**，生成单页 Index 首页，内嵌所有 checkpoint 原始文件内容。
 
 **此页面不是模板**——不使用 `{{}}` 占位符替换。HTML 结构和渲染逻辑已内置在 `~/.claude/skills/claim-finish/assets/report-template.html` 中，Claude 只需注入一个 `REPORT_DATA` JSON 对象即可。
 
@@ -332,6 +374,19 @@ window.REPORT_DATA = {
         { name: "playwright.config.ts", path: "playwright.config.ts", content: "配置文件全文..." },
         { name: "脚本列表 (--list)", path: "", content: "npx playwright test --list 输出..." },
         { name: "setup.ts", path: "tests/setup/setup.ts", content: "前置脚本内容（若存在）..." }
+      ]
+    },
+    {
+      id: "cp8",
+      icon: "🎬",
+      title: "Demo 视频 + 快照图片",
+      status: "pass|warn|fail",
+      notes: "简短状态说明",
+      files: [
+        { name: "demo_video.spec.ts", path: "tests/demo_video.spec.ts", content: "Demo 脚本全文..." },
+        { name: "playwright.config.ts", path: "playwright.config.ts", content: "含 video/screenshot 配置的完整文件..." },
+        { name: "视频产物", path: "", content: "ls -la test-results/*.webm 或 *.mp4 输出..." },
+        { name: "快照图片", path: "", content: "ls -la test-results/*.png 输出..." }
       ]
     }
   ],
